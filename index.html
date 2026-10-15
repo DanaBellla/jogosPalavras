@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DANA | Palavras</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar panel">
+        <div class="brand-wrap">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <span class="brand-name">DANA</span>
+            <small>palavras</small>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <span class="pill">modo casual</span>
+          <button class="icon-btn" id="newGame" type="button">Nova partida</button>
+        </div>
+      </header>
+
+      <main class="main-grid">
+        <section class="game-panel panel">
+          <div class="title-row">
+            <div>
+              <p class="eyebrow">Jogo de adivinhação</p>
+              <h1>Palavras</h1>
+            </div>
+            <div class="score-box">
+              <span>Pontuação</span>
+              <strong id="scoreValue">0</strong>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="group">
+              <label>Modo</label>
+              <div class="button-grid mode-grid">
+                <button class="active" type="button" data-mode="daily">Diário</button>
+                <button type="button" data-mode="infinite">Infinito</button>
+              </div>
+            </div>
+
+            <div class="group">
+              <label>Tema</label>
+              <div class="button-grid theme-grid">
+                <button class="active" type="button" data-theme="animais">Animais</button>
+                <button type="button" data-theme="frutas">Frutas</button>
+                <button type="button" data-theme="tecnologia">Tecnologia</button>
+                <button type="button" data-theme="esportes">Esportes</button>
+              </div>
+            </div>
+
+            <div class="group">
+              <label>Nível</label>
+              <div class="button-grid level-grid">
+                <button type="button" data-level="easy">Fácil</button>
+                <button class="active" type="button" data-level="medium">Médio</button>
+                <button type="button" data-level="hard">Difícil</button>
+                <button type="button" data-level="expert">Especialista</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="switch-row">
+            <label class="switch">
+              <input id="hardMode" type="checkbox" />
+              <span>Modo difícil</span>
+            </label>
+            <label class="switch">
+              <input id="arcadeMode" type="checkbox" />
+              <span>Arcade</span>
+            </label>
+          </div>
+
+          <div class="board-wrapper">
+            <div id="board" class="board" aria-live="polite" aria-label="Grade do jogo"></div>
+          </div>
+
+          <div id="keyboard" class="keyboard" aria-label="Teclado virtual"></div>
+
+          <div id="status" class="status-bar" role="status" aria-live="polite">
+            Nova partida iniciada. Boa sorte!
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel side-card">
+            <h2>Resumo</h2>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span>Streak</span>
+                <strong id="streakValue">0</strong>
+              </div>
+              <div class="stat-card">
+                <span>Tempo</span>
+                <strong id="timerValue">--</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel side-card">
+            <h2>Como jogar</h2>
+            <ul class="legend">
+              <li><span class="dot green"></span>letra correta na posição certa</li>
+              <li><span class="dot yellow"></span>letra correta em outra posição</li>
+              <li><span class="dot gray"></span>letra que não está na palavra</li>
+            </ul>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
