@@ -1,99 +1,47 @@
 const MAX_GUESSES = 6;
-const STORAGE_KEY = 'dana_words_save_v1';
+const STORAGE_KEY = 'dana_words_save_v2';
 
 const app = {
-  mode: 'daily',
-  theme: 'animais',
-  level: 'medium',
-  hardMode: false,
-  arcadeMode: false,
+  wordLength: 5,
   secretWord: '',
   currentGuess: '',
+  cursorIndex: 0,
   guesses: [],
   keyboardState: {},
   score: 0,
   streak: 0,
-  timer: 45,
   gameOver: false,
-  timerId: null,
 };
 
-const WORD_BANK = {
-  animais: {
-    easy: ['gato', 'urso', 'pato', 'lobo', 'zebra', 'panda'],
-    medium: ['tigre', 'cobra', 'coala', 'sagui', 'guara', 'zebra'],
-    hard: ['baleia', 'coruja', 'sucuri', 'tucano', 'onagro', 'paviao'],
-    expert: ['elefante', 'tartaruga', 'macaco', 'flamingo', 'narval', 'hipopotamo']
-  },
-  frutas: {
-    easy: ['maca', 'pera', 'uva', 'kiwi', 'manga', 'caju'],
-    medium: ['banana', 'laranja', 'abacate', 'morango', 'melancia', 'coco'],
-    hard: ['damasco', 'pitaya', 'acerola', 'cambuci', 'maracuja', 'abacaxi'],
-    expert: ['cambuquira', 'cupuacu', 'graviola', 'carambola', 'jabuticaba', 'pitaya']
-  },
-  tecnologia: {
-    easy: ['wifi', 'site', 'chip', 'tela', 'mouse', 'byte'],
-    medium: ['robot', 'cursor', 'celular', 'teclado', 'notebook', 'sistema'],
-    hard: ['codigo', 'servidor', 'nuvem', 'processador', 'browser', 'filtro'],
-    expert: ['microchip', 'inteligencia', 'desenvolvedor', 'linguagem', 'computador', 'tecnologia']
-  },
-  esportes: {
-    easy: ['bola', 'rede', 'gol', 'pulo', 'time', 'rio'],
-    medium: ['tenis', 'atleta', 'corrida', 'ciclismo', 'vitoria', 'futebol'],
-    hard: ['basquete', 'natacao', 'handebol', 'maratona', 'esgrima', 'atletismo'],
-    expert: ['campeonato', 'triathlon', 'voleibol', 'ginastica', 'esgrima', 'pentatlo']
-  }
-};
+const WORD_BANK = window.DANA_WORD_BANK;
 
 const boardEl = document.getElementById('board');
 const keyboardEl = document.getElementById('keyboard');
 const statusEl = document.getElementById('status');
 const scoreValue = document.getElementById('scoreValue');
 const streakValue = document.getElementById('streakValue');
-const timerValue = document.getElementById('timerValue');
-const hardToggle = document.getElementById('hardMode');
-const arcadeToggle = document.getElementById('arcadeMode');
 const newGameBtn = document.getElementById('newGame');
-const modeButtons = [...document.querySelectorAll('[data-mode]')];
-const themeButtons = [...document.querySelectorAll('[data-theme]')];
-const levelButtons = [...document.querySelectorAll('[data-level]')];
+const lengthButtons = [...document.querySelectorAll('[data-word-length]')];
 
 function normalizeWord(word) {
   return String(word || '').trim().toLowerCase().replace(/\s+/g, '');
 }
 
-function getWordLength(level) {
-  const lengths = { easy: 5, medium: 5, hard: 6, expert: 6 };
-  return lengths[level] || 5;
+function getWordLength() {
+  return app.wordLength;
 }
 
 function getAvailableWords() {
-  const pool = WORD_BANK[app.theme]?.[app.level] || WORD_BANK.animais.medium;
-  return pool
+  return WORD_BANK[app.wordLength]
     .map(normalizeWord)
-    .filter((word) => word.length === getWordLength(app.level));
-}
-
-function getTodaySeed() {
-  const now = new Date();
-  return now.toISOString().slice(0, 10);
+    .filter((word) => word.length === getWordLength());
 }
 
 function chooseSecretWord() {
   const pool = getAvailableWords();
-  if (!pool.length) return 'panda';
-
-  if (app.mode === 'daily') {
-    const salt = `${getTodaySeed()}-${app.theme}-${app.level}`;
-    let hash = 0;
-    for (let i = 0; i < salt.length; i += 1) {
-      hash = (hash * 31 + salt.charCodeAt(i)) >>> 0;
-    }
-    return pool[hash % pool.length];
-  }
-
-  const randomIndex = Math.floor(Math.random() * pool.length);
-  return pool[randomIndex];
+  const alternatives = pool.filter((word) => word !== app.secretWord);
+  const choices = alternatives.length ? alternatives : pool;
+  return choices[Math.floor(Math.random() * choices.length)];
 }
 
 function setStatus(message, isError = false) {
@@ -103,18 +51,14 @@ function setStatus(message, isError = false) {
 
 function saveState() {
   const payload = {
-    mode: app.mode,
-    theme: app.theme,
-    level: app.level,
-    hardMode: app.hardMode,
-    arcadeMode: app.arcadeMode,
+    wordLength: app.wordLength,
     secretWord: app.secretWord,
     currentGuess: app.currentGuess,
+    cursorIndex: app.cursorIndex,
     guesses: app.guesses,
     keyboardState: app.keyboardState,
     score: app.score,
     streak: app.streak,
-    timer: app.timer,
     gameOver: app.gameOver,
   };
 
@@ -127,18 +71,16 @@ function loadState() {
 
   try {
     const saved = JSON.parse(raw);
-    app.mode = saved.mode || app.mode;
-    app.theme = saved.theme || app.theme;
-    app.level = saved.level || app.level;
-    app.hardMode = !!saved.hardMode;
-    app.arcadeMode = !!saved.arcadeMode;
+    app.wordLength = [5, 6].includes(saved.wordLength) ? saved.wordLength : app.wordLength;
     app.secretWord = saved.secretWord || '';
     app.currentGuess = saved.currentGuess || '';
+    app.cursorIndex = Number.isInteger(saved.cursorIndex)
+      ? Math.min(saved.cursorIndex, app.currentGuess.length)
+      : app.currentGuess.length;
     app.guesses = Array.isArray(saved.guesses) ? saved.guesses : [];
     app.keyboardState = saved.keyboardState || {};
     app.score = saved.score || 0;
     app.streak = saved.streak || 0;
-    app.timer = saved.timer || 45;
     app.gameOver = !!saved.gameOver;
   } catch (error) {
     console.warn('Estado salvo inválido.', error);
@@ -148,60 +90,14 @@ function loadState() {
 function updateStats() {
   scoreValue.textContent = String(app.score);
   streakValue.textContent = String(app.streak);
-  timerValue.textContent = app.arcadeMode ? String(app.timer) : '--';
 }
 
 function updateButtons() {
-  modeButtons.forEach((button) => {
-    button.classList.toggle('active', button.dataset.mode === app.mode);
+  lengthButtons.forEach((button) => {
+    button.classList.toggle('active', Number(button.dataset.wordLength) === app.wordLength);
   });
 
-  themeButtons.forEach((button) => {
-    button.classList.toggle('active', button.dataset.theme === app.theme);
-  });
-
-  levelButtons.forEach((button) => {
-    button.classList.toggle('active', button.dataset.level === app.level);
-  });
-
-  hardToggle.checked = app.hardMode;
-  arcadeToggle.checked = app.arcadeMode;
   updateStats();
-}
-
-function clearTimer() {
-  if (app.timerId) {
-    clearInterval(app.timerId);
-    app.timerId = null;
-  }
-}
-
-function startTimer() {
-  clearTimer();
-
-  if (!app.arcadeMode) {
-    app.timer = 45;
-    timerValue.textContent = '--';
-    return;
-  }
-
-  app.timer = 45;
-  timerValue.textContent = String(app.timer);
-
-  app.timerId = setInterval(() => {
-    if (app.gameOver) {
-      clearTimer();
-      return;
-    }
-
-    app.timer -= 1;
-    timerValue.textContent = String(app.timer);
-
-    if (app.timer <= 0) {
-      clearTimer();
-      finishGame(false, `Tempo acabou! A palavra era ${app.secretWord.toUpperCase()}.`);
-    }
-  }, 1000);
 }
 
 function getFeedbackForWord(guess) {
@@ -235,7 +131,7 @@ function getTileState(rowIndex, colIndex) {
 }
 
 function renderBoard() {
-  const cols = getWordLength(app.level);
+  const cols = getWordLength();
   boardEl.innerHTML = '';
 
   for (let row = 0; row < MAX_GUESSES; row += 1) {
@@ -248,6 +144,32 @@ function renderBoard() {
     for (let col = 0; col < cols; col += 1) {
       const tile = document.createElement('div');
       tile.className = 'tile';
+
+      if (row === app.guesses.length
+        && col === Math.min(app.cursorIndex, cols - 1)
+        && !app.gameOver) {
+        tile.classList.add('selected');
+      }
+
+      if (row === app.guesses.length && !app.gameOver) {
+        tile.setAttribute('role', 'button');
+        tile.tabIndex = 0;
+        tile.setAttribute('aria-label', `Posição ${col + 1}${guess[col] ? `, letra ${guess[col].toUpperCase()}` : ', vazia'}`);
+        tile.addEventListener('click', () => {
+          app.cursorIndex = Math.min(col, app.currentGuess.length);
+          renderBoard();
+          saveState();
+        });
+        tile.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            app.cursorIndex = Math.min(col, app.currentGuess.length);
+            renderBoard();
+            saveState();
+          }
+        });
+      }
 
       if (guess[col]) {
         tile.textContent = guess[col].toUpperCase();
@@ -314,33 +236,12 @@ function updateKeyboardState(guess) {
   });
 }
 
-function isHardModeValid(guess) {
-  if (!app.hardMode) return true;
-
-  for (const previousGuess of app.guesses) {
-    const feedback = getFeedbackForWord(previousGuess);
-
-    for (let index = 0; index < previousGuess.length; index += 1) {
-      if (feedback[index] === 'correct' && guess[index] !== previousGuess[index]) {
-        return false;
-      }
-
-      if (feedback[index] === 'present' && !guess.includes(previousGuess[index])) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 function finishGame(won, message) {
   app.gameOver = true;
-  clearTimer();
 
   if (won) {
     app.streak += 1;
-    const points = 100 + (MAX_GUESSES - app.guesses.length) * 25 + (app.arcadeMode ? app.timer * 3 : 0);
+    const points = 100 + (MAX_GUESSES - app.guesses.length) * 25;
     app.score += points;
   } else {
     app.streak = 0;
@@ -355,7 +256,7 @@ function finishGame(won, message) {
 
 function submitGuess() {
   const guess = normalizeWord(app.currentGuess);
-  const expectedLength = getWordLength(app.level);
+  const expectedLength = getWordLength();
 
   if (!guess) {
     setStatus('Digite uma palavra antes de enviar.', true);
@@ -369,12 +270,7 @@ function submitGuess() {
 
   const validWords = getAvailableWords();
   if (!validWords.includes(guess)) {
-    setStatus('Essa palavra não está na lista do tema atual.', true);
-    return;
-  }
-
-  if (!isHardModeValid(guess)) {
-    setStatus('Modo difícil: mantenha as letras já reveladas.', true);
+    setStatus('Essa palavra não está no repertório do jogo.', true);
     return;
   }
 
@@ -382,14 +278,14 @@ function submitGuess() {
   updateKeyboardState(guess);
 
   if (guess === app.secretWord) {
-    finishGame(true, `Você acertou! A palavra era ${app.secretWord.toUpperCase()}.`);
     app.currentGuess = '';
-    renderBoard();
-    renderKeyboard();
+    app.cursorIndex = 0;
+    finishGame(true, `Você acertou! A palavra era ${app.secretWord.toUpperCase()}.`);
     return;
   }
 
   app.currentGuess = '';
+  app.cursorIndex = 0;
 
   if (app.guesses.length >= MAX_GUESSES) {
     finishGame(false, `Fim de jogo! A palavra era ${app.secretWord.toUpperCase()}.`);
@@ -411,8 +307,20 @@ function handleKeyInput(key) {
   }
 
   if (key === 'DELETE') {
-    app.currentGuess = app.currentGuess.slice(0, -1);
+    if (app.cursorIndex > 0) {
+      app.currentGuess = app.currentGuess.slice(0, app.cursorIndex - 1)
+        + app.currentGuess.slice(app.cursorIndex);
+      app.cursorIndex -= 1;
+    }
     setStatus('Digite uma palavra válida.');
+    renderBoard();
+    saveState();
+    return;
+  }
+
+  if (key === 'DELETE_FORWARD') {
+    app.currentGuess = app.currentGuess.slice(0, app.cursorIndex)
+      + app.currentGuess.slice(app.cursorIndex + 1);
     renderBoard();
     saveState();
     return;
@@ -420,64 +328,37 @@ function handleKeyInput(key) {
 
   const normalized = String(key).toLowerCase();
   if (!/^[a-z]$/.test(normalized)) return;
-  if (app.currentGuess.length >= getWordLength(app.level)) return;
-
-  app.currentGuess += normalized;
+  app.currentGuess = app.currentGuess.slice(0, app.cursorIndex)
+    + normalized
+    + app.currentGuess.slice(app.cursorIndex);
+  app.currentGuess = app.currentGuess.slice(0, getWordLength());
+  app.cursorIndex = Math.min(app.cursorIndex + 1, app.currentGuess.length);
   setStatus('Tentativa em andamento...');
   renderBoard();
   saveState();
 }
 
 function buildNewGame() {
-  clearTimer();
   app.secretWord = chooseSecretWord();
   app.currentGuess = '';
+  app.cursorIndex = 0;
   app.guesses = [];
   app.keyboardState = {};
   app.gameOver = false;
   setStatus('Nova partida iniciada. Boa sorte!');
   renderBoard();
   renderKeyboard();
-  startTimer();
   updateStats();
   saveState();
 }
 
 function bindEvents() {
-  modeButtons.forEach((button) => {
+  lengthButtons.forEach((button) => {
     button.addEventListener('click', () => {
-      app.mode = button.dataset.mode;
+      app.wordLength = Number(button.dataset.wordLength);
       updateButtons();
       buildNewGame();
     });
-  });
-
-  themeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      app.theme = button.dataset.theme;
-      updateButtons();
-      buildNewGame();
-    });
-  });
-
-  levelButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      app.level = button.dataset.level;
-      updateButtons();
-      buildNewGame();
-    });
-  });
-
-  hardToggle.addEventListener('change', () => {
-    app.hardMode = hardToggle.checked;
-    updateButtons();
-    buildNewGame();
-  });
-
-  arcadeToggle.addEventListener('change', () => {
-    app.arcadeMode = arcadeToggle.checked;
-    updateButtons();
-    buildNewGame();
   });
 
   newGameBtn.addEventListener('click', () => {
@@ -490,6 +371,20 @@ function bindEvents() {
       handleKeyInput('ENTER');
     } else if (event.key === 'Backspace') {
       handleKeyInput('DELETE');
+    } else if (event.key === 'Delete') {
+      handleKeyInput('DELETE_FORWARD');
+    } else if (event.key === 'ArrowLeft') {
+      app.cursorIndex = Math.max(0, app.cursorIndex - 1);
+      renderBoard();
+    } else if (event.key === 'ArrowRight') {
+      app.cursorIndex = Math.min(app.currentGuess.length, app.cursorIndex + 1);
+      renderBoard();
+    } else if (event.key === 'Home') {
+      app.cursorIndex = 0;
+      renderBoard();
+    } else if (event.key === 'End') {
+      app.cursorIndex = app.currentGuess.length;
+      renderBoard();
     } else if (/^[a-zA-Z]$/.test(event.key)) {
       handleKeyInput(event.key.toUpperCase());
     }
@@ -507,7 +402,6 @@ function init() {
     setStatus('Partida carregada. Continue de onde parou.');
     renderBoard();
     renderKeyboard();
-    startTimer();
     updateStats();
   }
 }
